@@ -82,7 +82,10 @@ def get_boc():
 
 def get_union():
     response = requests.get(
-        'https://www.unionpayintl.com/upload/jfimg/{}.json'.format(datetime.datetime.now().strftime("%Y%m%d")), ).json()
+        'https://www.unionpayintl.com/upload/jfimg/{}.json'.format(
+            (datetime.datetime.now() + datetime.timedelta(
+                days=0 if datetime.datetime.now().hour >= 11 else -1)).strftime(
+                "%Y%m%d")), ).json()
 
     for pair in response['exchangeRateJson']:
         if pair['transCur'] in currencies and pair['baseCur'] == 'MOP':
@@ -165,12 +168,13 @@ def get_hsbc():
         if i['ccy'] in currencies:
             yield i['ccy'], float(i['ttSelRt']) * 1.0315 * 100
 
+
 def get_soicheong():
     response = requests.get(
         'https://www.soicheong.com/index.php?g=Api&m=Exchange&a=getRate',
     ).json()
     for i in response['value']:
-        if i['codenum']=='RMB':i['codenum']='CNY'
+        if i['codenum'] == 'RMB': i['codenum'] = 'CNY'
         if i['codenum'] in currencies:
             yield i['codenum'], float(i['rate2']) * 1.0315 * 100
 
