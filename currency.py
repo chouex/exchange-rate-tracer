@@ -179,6 +179,23 @@ def get_soicheong():
             yield i['codenum'], float(i['rate2']) * 1.0315 * 100
 
 
+def get_jcb():
+    response = requests.get(
+        'https://www.jcb.jp/rate/usd{}.html'.format(
+            (datetime.datetime.now() + datetime.timedelta(
+                days=0 if datetime.datetime.now().hour >= 10 else -1)).strftime(
+                "%m%d%Y")), ).text
+
+    table_data = [[cell.text.strip() for cell in row("td")] for row in BeautifulSoup(response, 'html.parser')("tr")]
+    for row in table_data:
+        if row[-1] == 'MOP':
+            MOP_SELL = float(row[4])
+    for row in table_data:
+        if row[-1] in currencies:
+            BUY = float(row[2])
+            yield row[-1], MOP_SELL / BUY * 100
+
+
 def get_text():
     rates = {}
 
@@ -203,6 +220,7 @@ def get_text():
     rates['mastercard'] = dict(get_mastercard())
     rates['hsbc'] = dict(get_hsbc())
     rates['soicheong'] = dict(get_soicheong())
+    rates['jcb'] = dict(get_jcb())
 
     # print("boc_rate/union_rate {:%}".format(boc_rate / union_rate - 1))
     # print("union_rate/visa_rate {:%}".format(union_rate / visa_rate - 1))
@@ -250,7 +268,8 @@ def get_text():
                                  rates['union'][c],
                                  rates['bnu'][c],
                                  rates['boc'][c],
-                                 rates['hsbc'][c]
+                                 rates['hsbc'][c],
+                                 rates['jcb'][c]
                                  ])
 
         head = ["Name", "Rate", "Diff per 100,000 " + c]
