@@ -1,6 +1,6 @@
 # Exchange Rate Tracer
 
-> Update: 2024-04-13 03:35:44.076669 (UTC)
+> Update: 2024-04-13 07:37:54.285627 (UTC)
 
 ## JPY
 
