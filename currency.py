@@ -180,12 +180,27 @@ def get_soicheong():
 
 
 def get_jcb():
+    day_delta = 0
+    if datetime.datetime.now().weekday() == 5:
+        day_delta = -1
+    elif datetime.datetime.now().weekday() == 6:
+        day_delta = -2
+    elif datetime.datetime.now().hour < 10:
+        day_delta = -1
+
     response = requests.get(
         'https://www.jcb.jp/rate/usd{}.html'.format(
             (datetime.datetime.now() + datetime.timedelta(
-                days=0 if datetime.datetime.now().hour >= 10 else -1)).strftime(
-                "%m%d%Y")), ).text
+                days=day_delta)).strftime(
+                "%m%d%Y")), )
+    if response.status_code == 404:
+        response = requests.get(
+            'https://www.jcb.jp/rate/usd.html')
+        href = BeautifulSoup(response.text, 'html.parser').select('li a')[0].attrs['href']
+        response = requests.get(
+            'https://www.jcb.jp'.format(href))
 
+    response = response.text
     table_data = [[cell.text.strip() for cell in row("td")] for row in BeautifulSoup(response, 'html.parser')("tr")]
     for row in table_data:
         if row[-1] == 'MOP':
