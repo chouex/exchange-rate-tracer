@@ -38,3 +38,7 @@ jobs:
           #git add .
           git commit -a -m "generated $(date +'%Y-%m-%d %H:%M:%S')"
           git push --force
+
+  deploy:
+    needs: run
+    uses: chouex/exchange-rate-tracer/.github/workflows/jekyll-gh-pages.yml@main
