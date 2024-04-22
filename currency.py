@@ -197,8 +197,7 @@ def get_jcb():
         response = requests.get(
             'https://www.jcb.jp/rate/usd.html')
         href = BeautifulSoup(response.text, 'html.parser').select('li a')[0].attrs['href']
-        response = requests.get(
-            'https://www.jcb.jp'.format(href))
+        response = requests.get('https://www.jcb.jp' + (href))
 
     response = response.text
     table_data = [[cell.text.strip() for cell in row("td")] for row in BeautifulSoup(response, 'html.parser')("tr")]
