@@ -312,13 +312,13 @@ def get_text():
             with open('logs/{0}.csv'.format(c), 'a', newline='') as file:
                 writer = csv.writer(file)
                 writer.writerow([datenow,
-                                 rates['visa'][c],
-                                 rates['mastercard'][c],
-                                 rates['union'][c],
-                                 rates['bnu'][c],
-                                 rates['boc'][c],
-                                 rates['hsbc'][c],
-                                 rates['jcb'][c]
+                                 rates['visa'].get(c),
+                                 rates['mastercard'].get(c),
+                                 rates['union'].get(c),
+                                 rates['bnu'].get(c),
+                                 rates['boc'].get(c),
+                                 rates['hsbc'].get(c),
+                                 rates['jcb'].get(c)
                                  ])
 
         head = ["Name", "Rate", "Diff per 100,000 " + c]
