@@ -1,7 +1,6 @@
 import csv
 import datetime
 import os
-import time
 
 import requests
 import json
@@ -11,10 +10,11 @@ import base64
 
 from tabulate import tabulate
 from bs4 import BeautifulSoup
-from zoneinfo import ZoneInfo
+
 
 GITHUB_EVENT_NAME = os.getenv('GITHUB_EVENT_NAME')
 currencies = ['JPY', 'CNY']
+datenow=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
 
 
 class Result:
@@ -100,13 +100,13 @@ def get_boc():
 def get_union():
     response = requests.get(
         'https://www.unionpayintl.com/upload/jfimg/{}.json'.format(
-            (datetime.datetime.now() + datetime.timedelta(
-                days=0 if datetime.datetime.now().hour >= 11 else -1)).strftime(
+            (datenow + datetime.timedelta(
+                days=0 if datenow.hour >= 11 else -1)).strftime(
                 "%Y%m%d")), ).json()
     result = Result()
-    if datetime.datetime.now().hour < 11:
-        result.date = (datetime.datetime.now() + datetime.timedelta(
-            days=0 if datetime.datetime.now().hour >= 11 else -1)).strftime(
+    if datenow.hour < 11:
+        result.date = (datenow + datetime.timedelta(
+            days=0 if datenow.hour >= 11 else -1)).strftime(
             "%Y%m%d")
     for pair in response['exchangeRateJson']:
         if pair['transCur'] in currencies and pair['baseCur'] == 'MOP':
@@ -136,8 +136,8 @@ def get_visa():
         params = {
             'amount': '1',
             'fee': '0',
-            'utcConvertedDate': datetime.datetime.now().strftime("%m/%d/%Y"),
-            'exchangedate': datetime.datetime.now().strftime("%m/%d/%Y"),
+            'utcConvertedDate': datenow.strftime("%m/%d/%Y"),
+            'exchangedate': datenow.strftime("%m/%d/%Y"),
             'fromCurr': 'MOP',
             'toCurr': c,
         }
@@ -212,20 +212,20 @@ def get_soicheong():
 def get_jcb():
     result = Result()
     day_delta = 0
-    if datetime.datetime.now().weekday() == 5:
+    if datenow.weekday() == 5:
         day_delta = -1
-    elif datetime.datetime.now().weekday() == 6:
+    elif datenow.weekday() == 6:
         day_delta = -2
-    elif datetime.datetime.now().hour < 10:
+    elif datenow.hour < 10:
         day_delta = -1
 
     response = requests.get(
         'https://www.jcb.jp/rate/usd{}.html'.format(
-            (datetime.datetime.now() + datetime.timedelta(
+            (datenow + datetime.timedelta(
                 days=day_delta)).strftime(
                 "%m%d%Y")), )
     if day_delta != 0:
-        result.date = (datetime.datetime.now() + datetime.timedelta(
+        result.date = (datenow + datetime.timedelta(
             days=day_delta)).strftime(
             "%m%d%Y")
     if response.status_code == 404:
@@ -278,7 +278,7 @@ def get_text():
     # print("boc_rate/visa_rate {:%}".format(boc_rate / visa_rate - 1))
     text = ''
     text += ('# Exchange Rate Tracer') + '\n\n'
-    text += f'> Update: {datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)}\n\n'
+    text += f'> Update: {datenow}\n\n'
     for c in currencies:
         text += f'## {c}\n\n'
         # Sort the dictionary by values in ascending order
@@ -311,7 +311,7 @@ def get_text():
         if GITHUB_EVENT_NAME == 'schedule':
             with open('logs/{0}.csv'.format(c), 'a', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow([datetime.datetime.now(),
+                writer.writerow([datenow,
                                  rates['visa'][c],
                                  rates['mastercard'][c],
                                  rates['union'][c],
