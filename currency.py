@@ -11,18 +11,33 @@ import base64
 
 from tabulate import tabulate
 from bs4 import BeautifulSoup
+from zoneinfo import ZoneInfo
 
 GITHUB_EVENT_NAME = os.getenv('GITHUB_EVENT_NAME')
 currencies = ['JPY', 'CNY']
 
 
+class Result:
+
+    def __init__(self, date='') -> None:
+        self.data = {}
+        self.date = date
+
+    def add(self, currency, rate):
+        self.data[currency] = rate
+
+    def get(self, currency):
+        return self.data[currency]
+
+
 def get_bnu():
     response = requests.get('https://online.bnu.com.mo/ebank/bnu/ExchangeRates?lv1ID=0&lv2ID=0&lang=C').text
     table_data = [[cell.text.strip() for cell in row("td")] for row in BeautifulSoup(response, 'html.parser')("tr")]
+    result = Result()
     for row in table_data:
         if row[0] in currencies:
-            yield row[0], float(row[9 if row[0] != 'CNY' else 5]) * 100
-    return
+            result.add(row[0], float(row[9 if row[0] != 'CNY' else 5]) * 100)
+    return result
     key = os.getenv('KEY').encode()  # 16, 24, or 32 bytes長度的金鑰
     iv = os.getenv('IV').encode()  # 16 bytes長度的初始向量
 
@@ -72,12 +87,14 @@ def get_boc():
 
     response = requests.post('https://wxs.bocmacau.com/wx/portal/WXQryExchangeRate', headers=headers,
                              json=json_data).json()
+    result = Result()
     for pair in response['List']:
         if pair['ExchangeCurrency'] in currencies:
             boc_rate = pair['CSRate']
             boc_tt_rate = pair['TTSRate']
-            yield pair['ExchangeCurrency'], (
-                boc_rate if pair['ExchangeCurrency'] != 'CNY' else boc_tt_rate, boc_tt_rate + 0.050)
+            result.add(pair['ExchangeCurrency'],
+                       boc_rate if pair['ExchangeCurrency'] != 'CNY' else boc_tt_rate)
+    return result
 
 
 def get_union():
@@ -86,14 +103,20 @@ def get_union():
             (datetime.datetime.now() + datetime.timedelta(
                 days=0 if datetime.datetime.now().hour >= 11 else -1)).strftime(
                 "%Y%m%d")), ).json()
-
+    result = Result()
+    if datetime.datetime.now().hour < 11:
+        result.date = (datetime.datetime.now() + datetime.timedelta(
+            days=0 if datetime.datetime.now().hour >= 11 else -1)).strftime(
+            "%Y%m%d")
     for pair in response['exchangeRateJson']:
         if pair['transCur'] in currencies and pair['baseCur'] == 'MOP':
             union_rate = pair['rateData'] * 100
-            yield pair['transCur'], union_rate
+            result.add(pair['transCur'], union_rate)
+    return result
 
 
 def get_visa():
+    result = Result()
     for c in currencies:
         headers = {
             'accept': 'application/json, text/plain, */*',
@@ -121,10 +144,12 @@ def get_visa():
 
         response = requests.get('https://www.visa.com.hk/cmsapi/fx/rates', params=params, headers=headers).json()
         visa_rate = float(response['fxRateWithAdditionalFee']) * 100
-        yield c, visa_rate
+        result.add(c, visa_rate)
+    return result
 
 
 def get_mastercard():
+    result = Result()
     for c in currencies:
         headers = {
             'accept': 'application/json, text/plain, */*',
@@ -153,10 +178,12 @@ def get_mastercard():
             headers=headers,
         ).json()
         mastercard_rate = response['data']['conversionRate'] * 100
-        yield c, mastercard_rate
+        result.add(c, mastercard_rate)
+    return result
 
 
 def get_hsbc():
+    result = Result()
     params = {
         'locale': 'zh_HK',
     }
@@ -166,20 +193,24 @@ def get_hsbc():
     ).json()
     for i in response['detailRates']:
         if i['ccy'] in currencies:
-            yield i['ccy'], float(i['ttSelRt']) * 1.0315 * 100
+            result.add(i['ccy'], float(i['ttSelRt']) * 1.0315 * 100)
+    return result
 
 
 def get_soicheong():
+    result = Result()
     response = requests.get(
         'https://www.soicheong.com/index.php?g=Api&m=Exchange&a=getRate',
     ).json()
     for i in response['value']:
         if i['codenum'] == 'RMB': i['codenum'] = 'CNY'
         if i['codenum'] in currencies:
-            yield i['codenum'], float(i['rate2']) * 1.0315 * 100
+            result.add(i['codenum'], float(i['rate2']) * 1.0315 * 100)
+    return result
 
 
 def get_jcb():
+    result = Result()
     day_delta = 0
     if datetime.datetime.now().weekday() == 5:
         day_delta = -1
@@ -193,11 +224,16 @@ def get_jcb():
             (datetime.datetime.now() + datetime.timedelta(
                 days=day_delta)).strftime(
                 "%m%d%Y")), )
+    if day_delta != 0:
+        result.date = (datetime.datetime.now() + datetime.timedelta(
+            days=day_delta)).strftime(
+            "%m%d%Y")
     if response.status_code == 404:
         response = requests.get(
             'https://www.jcb.jp/rate/usd.html')
         href = BeautifulSoup(response.text, 'html.parser').select('li a')[0].attrs['href']
         response = requests.get('https://www.jcb.jp' + (href))
+        result.date = href.split('/')[-1]
 
     response = response.text
     table_data = [[cell.text.strip() for cell in row("td")] for row in BeautifulSoup(response, 'html.parser')("tr")]
@@ -207,59 +243,58 @@ def get_jcb():
     for row in table_data:
         if row[-1] in currencies:
             BUY = float(row[2])
-            yield row[-1], MOP_SELL / BUY * 100
+            result.add(row[-1], MOP_SELL / BUY * 100)
+    return result
 
 
 def get_text():
     rates = {}
 
-    rates['bnu'] = dict(get_bnu())
+    rates['bnu'] = get_bnu()
 
     try:
-        rates['boc'] = dict(get_boc())
+        rates['boc'] = (get_boc())
         # , rates['boc TT withdraw (+MOP5 every 10,000yen)']
     except:
         pass
     try:
-        rates['union'] = dict(get_union())
+        rates['union'] = (get_union())
         # , rates['union ICBC (+MOP18 every 100,000yen)']
     except:
         # rates['union'] = 999
         print('銀聯系統匯率週一至週五每日更新，週六周日延用週五匯率。如無特殊情況，部分歐系貨幣匯率生效時間為北京時間16:30，其他貨幣匯率生效時間為北京時間11:00。')
     try:
-        rates['visa'] = dict(get_visa())
+        rates['visa'] = (get_visa())
     except:
         pass
 
-    rates['mastercard'] = dict(get_mastercard())
-    rates['hsbc'] = dict(get_hsbc())
-    rates['soicheong'] = dict(get_soicheong())
-    rates['jcb'] = dict(get_jcb())
+    rates['mastercard'] = (get_mastercard())
+    rates['hsbc'] = (get_hsbc())
+    rates['soicheong'] = (get_soicheong())
+    rates['jcb'] = (get_jcb())
 
     # print("boc_rate/union_rate {:%}".format(boc_rate / union_rate - 1))
     # print("union_rate/visa_rate {:%}".format(union_rate / visa_rate - 1))
     # print("boc_rate/visa_rate {:%}".format(boc_rate / visa_rate - 1))
     text = ''
     text += ('# Exchange Rate Tracer') + '\n\n'
-    text += f'> Update: {datetime.datetime.now()} (UTC)\n\n'
+    text += f'> Update: {datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)}\n\n'
     for c in currencies:
         text += f'## {c}\n\n'
         # Sort the dictionary by values in ascending order
         names = {}
-        for k, v in rates.items():
-            if c not in v: continue
-            if k == 'union':
-                names[k] = v[c]
-                if c == 'JPY':
-                    names['union ICBC (+MOP18 every 100,000yen)'] = v[c] + 0.018
-                if c == 'CNY':
-                    names['union ICBC (+MOP18 every 10,000yuan)'] = v[c] + 0.18
-            elif k == 'boc':
-                names[k] = v[c][0]
-                if c == 'JPY':
-                    names['boc TT withdraw (+MOP5 every 10,000yen)'] = v[c][1]
+        for n, result in rates.items():
+            if result is None or result.get(c) is None: continue
+            if result.date != '':
+                n += ' (' + result.date + ')'
+            if n == 'union':
+                names[n] = result.get(c)
+                # if c == 'JPY':
+                #     names['union ICBC (+MOP18 every 100,000yen)'] = result.get(c) + 0.018
+                # if c == 'CNY':
+                #     names['union ICBC (+MOP18 every 10,000yuan)'] = result.get(c) + 0.18
             else:
-                names[k] = v[c]
+                names[n] = result.get(c)
         sorted_dict = dict(sorted(names.items(), key=lambda x: x[1]))
         table = []
         last = 0
@@ -292,8 +327,10 @@ def get_text():
         text += f'\n\n'
     return text + """
 > 銀聯系統匯率週一至週五每日更新，週六周日延用週五匯率。如無特殊情況，部分歐系貨幣匯率生效時間為北京時間16:30，其他貨幣匯率生效時間為北京時間11:00。
-
+>
 > BNU下班時間匯率較差。
+>
+> [立橋](https://www.wlbank.com.mo/uploads/ueditor/file/20181211/1544536513900230.pdf)/[發展銀行](https://www.mdb.com.mo/Service_Charges_20230728.pdf)海外銀聯提現暫時豁免手續費
 """
 
 
