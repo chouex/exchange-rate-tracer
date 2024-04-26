@@ -1,6 +1,7 @@
 import csv
 import datetime
 import os
+import re
 
 import requests
 import json
@@ -11,10 +12,9 @@ import base64
 from tabulate import tabulate
 from bs4 import BeautifulSoup
 
-
 GITHUB_EVENT_NAME = os.getenv('GITHUB_EVENT_NAME')
 currencies = ['JPY', 'CNY']
-datenow=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
+datenow = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
 
 
 class Result:
@@ -227,13 +227,16 @@ def get_jcb():
     if day_delta != 0:
         result.date = (datenow + datetime.timedelta(
             days=day_delta)).strftime(
-            "%m%d%Y")
+            "%Y%m%d")
     if response.status_code == 404:
         response = requests.get(
             'https://www.jcb.jp/rate/usd.html')
         href = BeautifulSoup(response.text, 'html.parser').select('li a')[0].attrs['href']
         response = requests.get('https://www.jcb.jp' + (href))
-        result.date = href.split('/')[-1]
+        date_str = re.findall(r"\d+", href)[0]
+        date_obj = datetime.datetime.strptime(date_str, "%m%d%Y")
+        reformatted_date_str = date_obj.strftime("%Y%m%d")
+        result.date = reformatted_date_str
 
     response = response.text
     table_data = [[cell.text.strip() for cell in row("td")] for row in BeautifulSoup(response, 'html.parser')("tr")]
