@@ -2,6 +2,7 @@ import csv
 import datetime
 import os
 import re
+import time
 
 import requests
 import json
@@ -27,6 +28,7 @@ class Result:
         self.data[currency] = rate
 
     def get(self, currency):
+        if currency not in self.data:return None
         return self.data[currency]
 
 
@@ -172,13 +174,19 @@ def get_mastercard():
             'transAmt': '100',
         }
 
-        response = requests.get(
-            'https://www.mastercard.us/settlement/currencyrate/conversion-rate',
-            params=params,
-            headers=headers,
-        ).json()
-        mastercard_rate = response['data']['conversionRate'] * 100
-        result.add(c, mastercard_rate)
+        for i in range(3):
+            response = requests.get(
+                'https://www.mastercard.us/settlement/currencyrate/conversion-rate',
+                params=params,
+                headers=headers,
+            )
+            if response.status_code==200 and response.text[0]=='{':
+                response=response.json()
+                mastercard_rate = response['data']['conversionRate'] * 100
+                result.add(c, mastercard_rate)
+                break
+            time.sleep(i+1)
+       
     return result
 
 
