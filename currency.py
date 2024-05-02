@@ -28,7 +28,7 @@ class Result:
         self.data[currency] = rate
 
     def get(self, currency):
-        if currency not in self.data:return None
+        if currency not in self.data: return None
         return self.data[currency]
 
 
@@ -180,13 +180,13 @@ def get_mastercard():
                 params=params,
                 headers=headers,
             )
-            if response.status_code==200 and response.text[0]=='{':
-                response=response.json()
+            if response.status_code == 200 and response.text[0] == '{':
+                response = response.json()
                 mastercard_rate = response['data']['conversionRate'] * 100
                 result.add(c, mastercard_rate)
                 break
-            time.sleep(i+1)
-       
+            time.sleep(i + 1)
+
     return result
 
 
@@ -215,6 +215,7 @@ def get_soicheong():
         if i['codenum'] in currencies:
             result.add(i['codenum'], float(i['rate2']) * 1.0315 * 100)
     return result
+
 
 
 def get_jcb():
@@ -257,6 +258,35 @@ def get_jcb():
             result.add(row[-1], MOP_SELL / BUY * 100)
     return result
 
+def get_yahoo():
+    result = Result()
+
+    # Set the base currency
+    base_currency = 'HKD'
+    headers = {
+        'accept': 'application/json, text/plain, */*',
+        'accept-language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-CN;q=0.6',
+        'referer': 'https://www.mastercard.us/en-us/personal/get-support/convert-currency.html',
+        'sec-ch-ua': '"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-origin',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    }
+
+    for target_currency in currencies:
+
+        response = requests.get(
+            'https://finance.yahoo.com/quote/{}{}=X?.tsrc=fin-srch'.format(base_currency,target_currency),headers=headers
+        )
+        exchange_rate = float(BeautifulSoup(response.text, 'html.parser').select('.livePrice span') [0].text)
+
+        result.add(target_currency, 1 / exchange_rate * 1.0315*100)
+
+    return result
+
 
 def get_text():
     rates = {}
@@ -283,6 +313,7 @@ def get_text():
     rates['hsbc'] = (get_hsbc())
     rates['soicheong'] = (get_soicheong())
     rates['jcb'] = (get_jcb())
+    rates['yahoo'] = get_yahoo()
 
     # print("boc_rate/union_rate {:%}".format(boc_rate / union_rate - 1))
     # print("union_rate/visa_rate {:%}".format(union_rate / visa_rate - 1))
@@ -304,6 +335,11 @@ def get_text():
                 #     names['union ICBC (+MOP18 every 100,000yen)'] = result.get(c) + 0.018
                 # if c == 'CNY':
                 #     names['union ICBC (+MOP18 every 10,000yuan)'] = result.get(c) + 0.18
+            elif n == 'yahoo':
+                names[n] = result.get(c)
+                if c == 'JPY':
+                    names['ib¹'] =(100000*(result.get(c)/100)+16)/100000*100
+
             else:
                 names[n] = result.get(c)
         sorted_dict = dict(sorted(names.items(), key=lambda x: x[1]))
@@ -337,13 +373,14 @@ def get_text():
                          tablefmt="github")
         text += f'\n\n'
     return text + """
+> 1. IB以每JPY100,000 +USD2 手續費計算
+>
 > 銀聯系統匯率週一至週五每日更新，週六周日延用週五匯率。如無特殊情況，部分歐系貨幣匯率生效時間為北京時間16:30，其他貨幣匯率生效時間為北京時間11:00。
 >
 > BNU下班時間匯率較差。
 >
 > [立橋](https://www.wlbank.com.mo/uploads/ueditor/file/20181211/1544536513900230.pdf)/[發展銀行](https://www.mdb.com.mo/Service_Charges_20230728.pdf)海外銀聯提現暫時豁免手續費
 """
-
 
 # while True:
 #     print(get_text())
