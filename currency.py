@@ -311,7 +311,7 @@ def get_text():
 
     rates['mastercard'] = (get_mastercard())
     rates['hsbc'] = (get_hsbc())
-    rates['soicheong'] = (get_soicheong())
+    #rates['soicheong'] = (get_soicheong())
     rates['jcb'] = (get_jcb())
     rates['yahoo'] = get_yahoo()
 
