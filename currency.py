@@ -302,31 +302,27 @@ def get_yahoo():
 
 
 def get_text():
+    m_list=[
+        'bnu',
+        'boc',
+        'union',
+        'visa',
+        'mastercard',
+        'hsbc',
+        'soicheong',
+        'jcb',
+        'yahoo'
+    ]
     rates = {}
 
-    rates['bnu'] = get_bnu()
+    for m in m_list:
+        for i in range(3):
+            try:
+                rates[m] = globals()["get_"+m]()
+                continue
+            except:
+                time.sleep(5)
 
-    try:
-        rates['boc'] = (get_boc())
-        # , rates['boc TT withdraw (+MOP5 every 10,000yen)']
-    except:
-        pass
-    try:
-        rates['union'] = (get_union())
-        # , rates['union ICBC (+MOP18 every 100,000yen)']
-    except:
-        # rates['union'] = 999
-        print('銀聯系統匯率週一至週五每日更新，週六周日延用週五匯率。如無特殊情況，部分歐系貨幣匯率生效時間為北京時間16:30，其他貨幣匯率生效時間為北京時間11:00。')
-    try:
-        rates['visa'] = (get_visa())
-    except:
-        pass
-
-    rates['mastercard'] = (get_mastercard())
-    rates['hsbc'] = (get_hsbc())
-    rates['soicheong'] = (get_soicheong())
-    rates['jcb'] = (get_jcb())
-    rates['yahoo'] = get_yahoo()
 
     # print("boc_rate/union_rate {:%}".format(boc_rate / union_rate - 1))
     # print("union_rate/visa_rate {:%}".format(union_rate / visa_rate - 1))
