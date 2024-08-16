@@ -320,7 +320,8 @@ def get_text():
             try:
                 rates[m] = globals()["get_"+m]()
                 continue
-            except:
+            except Exception as e:
+                print(str(e), file=sys.stderr)
                 time.sleep(5)
 
 
