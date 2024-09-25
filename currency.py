@@ -384,13 +384,13 @@ def get_text():
                          tablefmt="github")
         text += f'\n\n'
     return text + """
-> 1. IB以每JPY100,000 +USD2 手續費計算
+> 1' IB以每JPY100,000 +USD2 手續費計算
 >
 > 銀聯系統匯率週一至週五每日更新，週六周日延用週五匯率。如無特殊情況，部分歐系貨幣匯率生效時間為北京時間16:30，其他貨幣匯率生效時間為北京時間11:00。
 >
 > BNU下班時間匯率較差。
 >
-> [立橋](https://www.wlbank.com.mo/uploads/ueditor/file/20181211/1544536513900230.pdf)/[發展銀行](https://www.mdb.com.mo/Service_Charges_20230728.pdf)海外銀聯提現暫時豁免手續費
+> [立橋](https://www.wlbank.com.mo/uploads/ueditor/file/20181211/1544536513900230.pdf)/[發展銀行](https://www.mdb.com.mo/Service_Charges_20230728.pdf)海外銀聯提現暫時豁免手續費(貴銀聯1.1%左右)
 """
 
 # while True:
