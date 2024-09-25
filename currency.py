@@ -15,7 +15,7 @@ from tabulate import tabulate
 from bs4 import BeautifulSoup
 
 GITHUB_EVENT_NAME = os.getenv('GITHUB_EVENT_NAME')
-currencies = ['JPY', 'CNY']
+currencies = ['JPY', 'CNY','TWD']
 datenow = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
 
 
