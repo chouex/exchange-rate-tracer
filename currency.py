@@ -317,6 +317,7 @@ def get_text():
     rates = {}
 
     for m in m_list:
+        rates[m] = Result()
         for i in range(3):
             try:
                 rates[m] = globals()["get_"+m]()
